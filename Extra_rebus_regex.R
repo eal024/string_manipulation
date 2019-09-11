@@ -98,7 +98,7 @@ str_view_all(x, pattern = rx)
 
 
 # String:
-x <- c("cat", "coat", "scotland", "tic toc")
+x <- c("cat", "coat", "scotland", "tic toc", "bil")
 
 # Start
 str_view(x, pattern = START %R% "c")
@@ -127,10 +127,29 @@ str_view_all(x, pattern = "t" %R% ANY_CHAR )
 str_view(x, pattern = "t" %R% ANY_CHAR %R% ANY_CHAR)
 
 
+# Example match string exactl. three char:
+
+str_view_all( x, pattern = START %R% ANY_CHAR %R% ANY_CHAR %R% ANY_CHAR %R% END)
 
 
+# Example match q followed by any character 
+
+str_view(x, pattern = "i" %R% ANY_CHAR)
 
 
+# More examples: ----------------------------------------------------------
+
+names_q <- c("Quentin", "Kaliq", "Jacques",  "Jacqes")
+
+pattern <- "q" %R% ANY_CHAR
+
+
+str_view(names_q, pattern = pattern)
+
+str_subset(names_q, pattern = pattern)
+
+# Hvor mange?
+length( str_subset(names_q, pattern = pattern) )
 
 
 
