@@ -141,7 +141,7 @@ str_view(x, pattern = "i" %R% ANY_CHAR)
 
 names_q <- c("Quentin", "Kaliq", "Jacques",  "Jacqes")
 
-pattern <- "q" %R% ANY_CHAR
+pattern <- "a" %R% ANY_CHAR
 
 
 str_view(names_q, pattern = pattern)
@@ -150,6 +150,88 @@ str_subset(names_q, pattern = pattern)
 
 # Hvor mange?
 length( str_subset(names_q, pattern = pattern) )
+
+
+# Extract 
+
+st_ext_q <- str_extract(names_q, pattern = pattern)
+
+
+
+
+table(st_ext_q)
+
+
+# 
+boy_names <- babynames::babynames %>% filter(sex == "M") %>% sample_n(size = 10000)
+
+# Find part of name that matches pattern
+str_extract(boy_names %>% pull(name), pattern =  pattern)
+
+# Did any names have the pattern more than once?
+table(str_extract(boy_names %>% pull(name), pattern =  pattern))
+
+
+
+
+# Flere eksempler ---------------------------------------------------------
+
+head(boy_names)
+
+
+boy_name_string <- boy_names %>% pull(name) 
+
+str(boy_name_string)
+
+pattern_names <- or("Jeffrey", "Geoffrey")
+
+# Match names:
+str_view_all(boy_name_string, pattern = pattern_names, match =  T)
+
+# Match ending.
+
+str_view_all(boy_name_string, pattern = or("Je", "Geo") %R% "ffrey", match = T)
+
+# Matchs alternativ ending
+str_view(boy_name_string, pattern = or("Je", "Geo") %R% "ff" %R% or("ry", "ery", "rey", "erey"), match = T)
+
+
+
+# More names --------------------------------------------------------------
+
+girl_names <- babynames::babynames %>% filter(sex == "F") %>%  sample_n( size = 10000) %>% pull(name)
+
+# Names that starts whit cath og kath
+c_or_k_ath <- START %R% or("Cath", "Kath")
+
+str_view( girl_names, pattern = c_or_k_ath, match = T)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
