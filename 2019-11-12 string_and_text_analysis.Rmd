@@ -1,0 +1,238 @@
+---
+title: "String and text analysis"
+author: "Eirik Lamøy"
+date: "11 12 2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Recap
+
+[A good blogpost about stringr and rebus](https://rpubs.com/iPhuoc/stringr_manipulation)
+
+```{r}
+library(tidyverse);library(babynames);library(rebus)
+
+```
+
+
+### The packages stringr
+Basic/simple ways to seach for pattern/words.
+```{r}
+
+boy_names <- babynames::babynames %>% filter(sex == "M") %>% head(n = 20) %>% pull(name)
+
+# Look for excact names 
+str_view(boy_names, pattern = "John")
+
+# Look for names with vowels:
+str_view(boy_names, pattern = rebus::char_class("aeioAEIOU"))
+
+str_view_all(boy_names, pattern = rebus::char_class("aeioAEIOU"))
+
+# != char_class vowel
+str_view(boy_names, pattern = rebus::negated_char_class("aeioAEIOU"))
+
+
+str_view_all(boy_names,
+         pattern = rebus::zero_or_more(rebus::negated_char_class("aeioAEIOU")),
+         match = T)
+
+```
+
+
+
+### More
+
+Some more example of seach for number/spes.char of different types.
+
+
+```{r}
+
+strings <- c(
+  "apple", 
+  "219 733 8965", 
+  "329-293-8753", 
+  "Work: 579-499-7527; Home: 543.355.3679"
+)
+
+str_view_all(strings, pattern = "[0-9]")
+
+str_view_all( strings, pattern = rebus::char_class("[().0-9]") )
+```
+
+Seach for words, after three digits
+
+```{r}
+three_digits <- DGT %R% DGT %R% DGT 
+
+phone_pattern <- optional(OPEN_PAREN) %R% 
+  three_digits %R% 
+  zero_or_more(separator) 
+
+
+
+string_example <- "345 Eirik"
+
+
+str_view(string_example, pattern = START %R% three_digits  )
+
+
+str_view(string_example, pattern =  "[A-Z]" %R% "[a-z]" %R% "[a-z]")
+
+
+
+```
+
+
+
+
+
+
+
+## Sentiment analysis
+
+
+```{r}
+library(tidytext)
+```
+
+Plutchik's wheel of emotion
+```{r}
+# As matrix
+ag_dtm_m <- as.matrix(ag_dtm)
+
+# Examine line 2206 and columns 245:250
+ag_dtm_m[2206, 245:250]
+
+# Tidy up the DTM
+ag_tidy <- tidy(ag_dtm)
+
+# Examine tidy with a word you saw
+ag_tidy[831:835, ]
+```
+
+
+```{r}
+# Subset to AFINN
+afinn_lex <- get_sentiments("afinn")
+
+# Count AFINN scores
+afinn_lex %>% 
+  count(value)
+
+# Subset to nrc
+nrc_lex <- get_sentiments("nrc")
+
+# Make the nrc counts object
+nrc_counts <- nrc_lex %>% count(sentiment)
+
+# Plot n vs. sentiment
+ggplot(nrc_counts, aes(x = fct_reorder(sentiment, n ), y = n)) +
+  # Add a col layer
+  geom_col() +
+  ggthemes::theme_gdocs() +
+  coord_flip()
+
+```
+ 
+
+
+### Bing lexicion
+Lex with pos and neg. word. 
+```{r}
+
+# Get Bing lexicon
+bing <- get_sentiments("bing")
+
+# Join text to lexicon
+ag_bing_words <- inner_join(ag_tidy, bing, by = c("term" = "word"))
+
+# Examine
+ag_bing_words
+
+# Get counts by sentiment
+ag_bing_words %>%
+  count(sentiment)
+
+
+```
+
+```{r}
+moby <-  gutenbergr::gutenberg_download(gutenberg_id = 2701)
+
+head(moby)
+
+# remove blank lines:
+
+moby <- moby %>% filter( !text == "")
+
+moby_clean <- moby %>% select(text) %>% mutate( line = row_number()) %>% select(line, text)
+
+library(tidytext)
+
+tidy_moby <- moby_clean %>% unnest_tokens(word, text)
+
+bing <- get_sentiments("bing")
+
+tidy_moby_lex <- inner_join(tidy_moby, bing, by = c("word" = "word"))
+
+
+tidy_moby_lex
+
+tidy_moby_lex_count <- tidy_moby_lex %>% count(sentiment, line)
+
+
+tidy_moby_lex_count %>% 
+  pivot_wider( names_from =  sentiment, values_from =  n, values_fill = list(n = 0) )
+
+```
+
+The inner_join -function.
+
+
+```{r}
+# by word
+tidy_moby %>% 
+  inner_join( bing, by = c("word")) %>% 
+  count(word,sentiment ) %>% 
+  pivot_wider( values_from = n, names_from = sentiment, values_fill = list(n = 0))
+# by index
+tidy_moby_polarity<-
+  tidy_moby %>% 
+  inner_join( bing, by = c("word")) %>% 
+  count(sentiment,line ) %>% 
+  pivot_wider( values_from = n, names_from = sentiment, values_fill = list(n = 0)) %>% 
+  mutate( polarity = positive - negative)
+```
+
+```{r}
+tidy_moby_polarity %>% 
+  ggplot( aes(line, polarity)) +
+  geom_smooth( se  = F)
+
+```
+
+
+## AFINN & NRC inner joins - in more detail.
+
+```{r}
+library(textdata)
+
+afinn <- get_sentiments("afinn")
+
+
+
+```
+
+
+
+
+
+
+
