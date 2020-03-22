@@ -172,7 +172,7 @@ head(moby)
 
 moby <- moby %>% filter( !text == "")
 
-moby_clean <- moby %>% select(text) %>% mutate( line = row_number()) %>% select(line, text)
+moby_clean <- moby %>% select(text) %>% mutate( line = row_number()) %>% select(line, text) %>% mutate( text = stringr::str_trim(text, side = c("both")))
 
 library(tidytext)
 
@@ -220,18 +220,226 @@ tidy_moby_polarity %>%
 
 
 ## AFINN & NRC inner joins - in more detail.
+Afinn lexicon: word ranked between -5 to 5, were minus is negative and plus is positive.
 
+NRC: Word in 10 classes
 ```{r}
 library(textdata)
 
 afinn <- get_sentiments("afinn")
+
+nrc <- get_sentiments("nrc")
+
+tail(afinn)
+tail(nrc)
+```
+
+
+
+```{r}
+
+tidy_moby_afinn <-
+  tidy_moby %>% 
+  inner_join( afinn, by = c( "word"))
+
+
+tidy_moby_afinn %>% 
+  count(value, line) %>% 
+  group_by(line) %>% 
+  summarise( total_value_line = sum(value *n)) %>% 
+  ggplot( ) +
+  aes( line, total_value_line) +
+  geom_smooth( se = F)
+
+
+```
+
+
+The NRC - without "positive" and "negative" as sentiments word
+```{r}
+tidy_mody_nrc <- tidy_moby %>%
+  #filter( !str_detect(rebus::char_class(rebus::DTG)))
+  count( word, line) %>% 
+  # Join to nrc lexicon by term = word
+  inner_join(nrc, by = c( "word")) %>%
+  # Only consider Plutchik sentiments
+  filter(!sentiment %in% c("positive", "negative")) %>%
+  # Group by sentiment
+  group_by(sentiment) %>% 
+  # Get total count by sentiment
+  summarise(total_count = sum(n))
+```
+
+Plot of sentiment words:
+
+```{r}
+
+# Plot total_count vs. sentiment
+ggplot(tidy_mody_nrc, aes(x = fct_reorder(sentiment, total_count), y = total_count)) +
+  # Add a column geom
+  geom_col() +
+  coord_flip()
+```
+
+
+##  new section
+
+```{r}
+bing <- get_sentiments("bing")
+
+moby_polarity <-
+  tidy_moby %>% 
+  #filter(! str_detect(word, pattern = "[:digit:]")) %>% 
+  #anti_join(stop_words) %>% 
+  count(word, line) %>% 
+  select( line, word, n) %>% 
+  inner_join( bing, by = c("word")) %>% 
+  count( sentiment, line) %>% 
+  pivot_wider( names_from = sentiment, values_from = "n", values_fill = list(n = 0)) %>% 
+  mutate( polarity = positive - negative) %>% 
+  mutate( line_number = row_number())
+    
+moby_polarity %>% 
+  ggplot( ) +
+  aes( x = line , y = polarity ) +
+  geom_smooth( se = F) +
+  geom_hline(yintercept = 0, color = "red") +
+  ggtitle("Moby Dick Chronological Polarity") +
+  ggthemes::theme_gdocs()
+
+
+#tidytext::stop_words
+```
+
+
+
+## Frequency analysis
+
+
+
+
+```{r}
+moby_tidy_sentiment <- 
+  tidy_moby %>% 
+  inner_join( bing, by = c("word")) %>% 
+  count( word, sentiment ) %>% 
+  pivot_wider( names_from = sentiment, values_from = n, values_fill = list( n = 0)) %>% 
+  mutate( polarity = positive - negative)
+
+moby_tidy_sentiment
+
+```
+
+One of the easiest ways to explore data is with a frequency analysis. Although not difficult, in sentiment analysis this simple method can be surprisingly illuminating. Specifically, you will build a barplot. In this exercise you are once again working with moby and bing to construct your visual.
+
+```{r}
+
+# Filter for word abov. 50
+moby_tidy_pol <-
+  moby_tidy_sentiment %>% 
+  filter( abs(polarity) > 50) %>% 
+  mutate( pos_or_neg = ifelse( polarity > 0, "positive", "negative"))
+
+
+moby_tidy_pol %>% 
+  ggplot( ) +
+  aes(  x = fct_reorder(word, polarity) , polarity, fill =pos_or_neg ) +
+  geom_col() +
+  ggtitle("Moby Dick: Sentiment Word Frequency") + 
+  ggthemes::theme_gdocs() +
+  # Rotate text and vertically justify
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.1)) +
+  coord_flip()
+```
+
+
+
+## Introsepction using sentiment analysis
+
+comparing frequent words in Plutchiks Framework.
+
+Where and how often appear Moby?
+
+How to detect spes. word:
+```{r}
+x <- c( "Eirik", "Moby","Trym")
+
+grep("Moby", x)
+
+grepl("Moby", x)
+
+# str_count("Moby", x)
+
+str_detect(x, "Moby")
+
+str_detect(x, "Moby")
+
+!str_detect(x, "Moby")
+
+# fins:
+str_detect(x, "Eirik|Moby")
+
+# NOot
+!str_detect(x, "Eirik|Moby")
 
 
 
 ```
 
 
+To compar polarity mixture: Stacked comparisons:
 
+```{r}
+mtcars %>% 
+  ggplot() +
+  aes( x = cyl , y  = mpg) + geom_point() + annotate(geom = "Text", x = 6, y = 20 , label = "Text")
+
+
+```
+
+
+### 
+
+```{r}
+pos_terms <- bos_reviews %>%
+  # Add polarity column
+  mutate(polarity = bos_pol$all$polarity) %>%
+  # Filter for negative polarity
+  filter(polarity > 0) %>%
+  # Extract comments column
+  pull(comments) %>% 
+  # Paste and collapse
+  paste(collapse = " ")
+
+neg_terms <- bos_reviews %>%
+  # Add polarity column
+  mutate(polarity = bos_pol$all$polarity) %>%
+  # Filter for negative polarity
+  filter(polarity < 0) %>%
+  # Extract comments column
+  pull(comments) %>% 
+  # Paste and collapse
+  paste(collapse = " ")
+
+# Concatenate the terms
+all_corpus <- c(pos_terms, neg_terms) %>% 
+  # Source from a vector
+  VectorSource() %>% 
+  # Create a volatile corpus
+  VCorpus()
+
+
+all_tdm <- TermDocumentMatrix(
+  # Use all_corpus
+  all_corpus, 
+  control = list(
+    # Use TFIDF weighting
+    weighting = weightTfIdf, 
+    # Remove the punctuation
+    removePunctuation = TRUE,
+    # Use English stopwords
+    stopwords = stopwords(kind = "en")
+```
 
 
 
